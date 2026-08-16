@@ -1,5 +1,5 @@
 ---
-description: Drafts numbered test case .in/.out files and a solution.cpp placeholder from a pasted problem's example inputs and outputs, for any platform (LeetCode, Codeforces, AtCoder, CSES, etc.). For LeetCode it also generates main.cpp from the unified template. Use when the user pastes a problem statement and wants the problem folder scaffolded (tests/ + solution.cpp), with the algorithm left to them.
+description: Drafts numbered test case .in/.out files and a solution.cpp placeholder from a pasted problem's example inputs and outputs, for any platform (LeetCode, Codeforces, AtCoder, CSES, etc.). For LeetCode it writes a pure class-style solution.cpp; the auto-runner (tools/runner.py) generates the glue at build time. Use when the user pastes a problem statement and wants the problem folder scaffolded (tests/ + solution.cpp), with the algorithm left to them.
 mode: primary
 temperature: 0.2
 ---
