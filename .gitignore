@@ -1,4 +1,3 @@
 /build
 tests/
-template/*/main.cpp
 __pycache__/

@@ -44,16 +44,17 @@ solution logic is left entirely to the user.
   ```
 
 - There is NO `main.cpp` and NO glue/driver file in the problem folder. The
-  unified harness `template/leetcode/main.cpp` (one fixed file, never edited)
-  provides `#include <bits/stdc++.h>`, `using namespace std;`, fast I/O, and
-  calls `solve()` from `main()`.
+  unified harness is embedded in the auto-runner `tools/runner.py` (one fixed
+  source, never edited): `#include <bits/stdc++.h>`, `using namespace std;`,
+  fast I/O, includes `solution.cpp`, and calls `solve()` from `main()`.
 - The auto-runner `tools/runner.py` does the rest at build time:
   1. Parses the method signature out of `solution.cpp`.
   2. Analyzes `tests/*.in` — detects value types (int/float/char/string) and
      the layout (counts + scalars first, then array data).
   3. Generates the glue (`solve()`: parse stdin -> call the method -> print
-     the result), splices it into the harness, and compiles with `-O2` and
-     `-I<problemDir>`.
+     the result), splices it into the embedded harness, and pipes the whole
+     source straight into `g++ -O2 -I<problemDir>` via stdin — no intermediate
+     file is written.
 - The `.in` files must follow the layout the analyzer understands:
   - array + scalar : first line `n <scalar>`, then the n values
   - single array   : first line `n`, then the n values

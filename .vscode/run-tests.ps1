@@ -6,10 +6,9 @@ param(
 $workspace = Split-Path -Parent $PSScriptRoot
 $problemDir = Split-Path -Parent $SourceFile
 
-# Same per-problem exe convention as build.ps1.
+# Same single shared exe convention as build.ps1.
 if (-not $ExePath) {
-    $problemName = Split-Path -Leaf $problemDir
-    $ExePath = Join-Path $workspace "build\$problemName.exe"
+    $ExePath = Join-Path $workspace "build\main.exe"
 }
 
 $testsDir = Join-Path $problemDir "tests"

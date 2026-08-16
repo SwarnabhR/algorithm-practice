@@ -44,18 +44,18 @@ public:
 };
 ```
 
-The unified harness lives in `template/leetcode/main.cpp` — ONE fixed file for
-every LeetCode problem (never edited). It provides `#include <bits/stdc++.h>`,
+The unified harness is embedded in the auto-runner (`tools/runner.py`) — one
+fixed source for every LeetCode problem: `#include <bits/stdc++.h>`,
 `using namespace std;`, fast I/O, includes `solution.cpp`, and calls `solve()`.
 
-The glue is generated automatically at build time by the auto-runner
-(`tools/runner.py`):
+The glue is generated automatically at build time by the auto-runner:
 
 1. Parses the method signature out of `solution.cpp`.
 2. Analyzes `tests/*.in` — detects value types (int/float/char/string) and the
    layout (counts + scalars first, then array data).
 3. Generates `solve()` (parse stdin -> call the method -> print the result),
-   splices it into the harness, and compiles with `-O2` and `-I<problemDir>`.
+   splices it into the embedded harness, and pipes the whole source straight
+   into `g++ -O2 -I<problemDir>` via stdin — no intermediate file is written.
 
 You never write or see the glue — only the class body in `solution.cpp` and the
 `tests/` files. The `.in` layout the analyzer understands:
@@ -77,13 +77,12 @@ including `main()`.
 
 With a problem's solution file open in VS Code, run the **Run Tests** task via
 `Ctrl+Alt+T`, or through the command palette (`Tasks: Run Test Task`). It
-builds the open file to `build/<problem>.exe` (incrementally — skipped when
-nothing changed), then runs the executable against every `N.in` in the sibling
-`tests/` folder and diffs the output against `N.out`, printing PASS/FAIL per
-case.
+builds the open file to `build/main.exe`, then runs the executable against
+every `N.in` in the sibling `tests/` folder and diffs the output against
+`N.out`, printing PASS/FAIL per case.
 
 The build (`.vscode/build.ps1`) is automatic: for LeetCode problems it runs
-`tools/runner.py` (auto-generates the glue, compiles with `-O2` and
+`tools/runner.py` (auto-generates the glue in memory, compiles with `-O2` and
 `-I<problemDir>`); for other platforms it compiles the open file directly
 (also `-O2`).
 
