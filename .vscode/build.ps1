@@ -1,15 +1,42 @@
 param(
     [Parameter(Mandatory = $true)][string]$SourceFile,
-    [Parameter(Mandatory = $true)][string]$ExePath
+    [string]$ExePath = ""
 )
 
 $workspace = Split-Path -Parent $PSScriptRoot
 $problemDir = Split-Path -Parent $SourceFile
 $isLeetCode = ($problemDir -split '[\\/]') -contains 'leetcode'
 
+# Per-problem exe: build/<problemName>.exe (override with -ExePath).
+if (-not $ExePath) {
+    $problemName = Split-Path -Leaf $problemDir
+    $ExePath = Join-Path $workspace "build\$problemName.exe"
+}
+
 $exeDir = Split-Path -Parent $ExePath
 if (-not (Test-Path $exeDir)) {
     New-Item -ItemType Directory -Path $exeDir -Force | Out-Null
+}
+
+# Incremental build: skip if the exe is newer than every input.
+$inputs = @($SourceFile)
+if ($isLeetCode) {
+    $harness = Join-Path $workspace "template\leetcode\main.cpp"
+    $runner = Join-Path $workspace "tools\runner.py"
+    $inputs += $harness, $runner
+}
+$testsDir = Join-Path $problemDir "tests"
+if (Test-Path $testsDir) {
+    $inputs += Get-ChildItem -Path $testsDir -Recurse -Include *.in, *.out
+}
+$inputs = $inputs | Where-Object { Test-Path $_ }
+if (Test-Path $ExePath) {
+    $exeTime = (Get-Item $ExePath).LastWriteTime
+    $stale = $inputs | Where-Object { (Get-Item $_).LastWriteTime -gt $exeTime }
+    if (-not $stale) {
+        Write-Host "Up to date: $ExePath" -ForegroundColor DarkGray
+        exit 0
+    }
 }
 
 if ($isLeetCode) {

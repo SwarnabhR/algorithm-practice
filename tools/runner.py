@@ -277,7 +277,7 @@ def build_solve(cls, method, ret, params, lines):
         print_lines = []
     else:
         call = ["    Solution sol;",
-                "    %s ans = sol.%s(%s);" % (cpp_of(ret), method, args)]
+                "    auto ans = sol.%s(%s);" % (method, args)]
         if ret_norm == "bool":
             print_lines = ["    cout << (ans ? \"true\" : \"false\") << '\\n';"]
         elif rk == "vector":
@@ -346,19 +346,15 @@ def main():
     print("[runner] signature : %s" % sig)
     print("[runner] input     : %s" % " ".join(
         "%s(%s)" % (t, detect_token(t)) for t in lines[0].split()[:8]))
-
-    build_dir = os.path.join(ROOT, "build")
-    os.makedirs(build_dir, exist_ok=True)
-    main_path = os.path.join(build_dir, "auto_main.cpp")
-    with open(main_path, "w") as f:
-        f.write(generate_main(solve_code))
-    print("[runner] generated : %s" % main_path)
+    print("[runner] glue      : generated in-memory, piped to g++ (no file written)")
 
     exe_dir = os.path.dirname(os.path.abspath(args.exe))
     os.makedirs(exe_dir, exist_ok=True)
+    # Pipe the generated source straight into g++ via stdin — no intermediate
+    # file is ever written. -I<problemDir> resolves #include "solution.cpp".
     cmd = ["g++", "-std=c++17", "-O2", "-I", problem_dir,
-           main_path, "-o", os.path.abspath(args.exe)]
-    return subprocess.run(cmd).returncode
+           "-x", "c++", "-", "-o", os.path.abspath(args.exe)]
+    return subprocess.run(cmd, input=generate_main(solve_code).encode()).returncode
 
 
 if __name__ == "__main__":

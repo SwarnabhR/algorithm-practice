@@ -77,9 +77,10 @@ including `main()`.
 
 With a problem's solution file open in VS Code, run the **Run Tests** task via
 `Ctrl+Alt+T`, or through the command palette (`Tasks: Run Test Task`). It
-builds the open file to `build/main.exe`, then runs the executable against
-every `N.in` in the sibling `tests/` folder and diffs the output against
-`N.out`, printing PASS/FAIL per case.
+builds the open file to `build/<problem>.exe` (incrementally — skipped when
+nothing changed), then runs the executable against every `N.in` in the sibling
+`tests/` folder and diffs the output against `N.out`, printing PASS/FAIL per
+case.
 
 The build (`.vscode/build.ps1`) is automatic: for LeetCode problems it runs
 `tools/runner.py` (auto-generates the glue, compiles with `-O2` and
