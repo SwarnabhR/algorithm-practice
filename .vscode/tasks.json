@@ -4,11 +4,15 @@
         {
             "label": "Build and Run C++",
             "type": "shell",
-            "command": "g++",
+            "command": "powershell",
             "args": [
-                "-std=c++20",
+                "-ExecutionPolicy",
+                "Bypass",
+                "-File",
+                "${workspaceFolder}/.vscode/build.ps1",
+                "-SourceFile",
                 "${file}",
-                "-o",
+                "-ExePath",
                 "${workspaceFolder}/build/main.exe"
             ],
             "options": {

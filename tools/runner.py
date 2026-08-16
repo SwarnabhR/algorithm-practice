@@ -1,0 +1,365 @@
+#!/usr/bin/env python3
+"""
+Auto-runner for LeetCode-style problems.
+
+Analyzes the open problem folder and builds the executable:
+
+  - solution.cpp   -> extracts the class Solution method signature
+  - tests/*.in     -> analyzes the input: detects value types
+                      (int / float / char / string) and the layout
+                      (counts + scalars first, then array data)
+
+It then generates the glue code (parse stdin -> call the method -> print the
+result), splices it into the unified harness (template/leetcode/main.cpp),
+and compiles with -O2.
+
+Layout conventions the analyzer understands (the scaffolder writes .in files
+in exactly this shape):
+
+  - array + scalar : first line `n <scalar>`, then the n values
+  - single array   : first line `n`, then the n values
+  - matrix         : first line `m n`, then the m*n values
+  - strings        : one string per line (or whitespace-separated tokens)
+
+Usage:
+  python tools/runner.py <problemDir> -o <exePath>
+"""
+
+import argparse
+import glob
+import os
+import re
+import subprocess
+import sys
+
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+HARNESS = os.path.join(ROOT, "template", "leetcode", "main.cpp")
+
+
+class Unsupported(Exception):
+    pass
+
+
+# --------------------------------------------------------------------------
+# Signature parsing
+# --------------------------------------------------------------------------
+
+def split_top(s):
+    """Split on top-level commas (ignores commas inside < > ( ) [ ])."""
+    parts, depth, cur = [], 0, ""
+    for ch in s:
+        if ch in "<([":
+            depth += 1
+        elif ch in ">)]":
+            depth -= 1
+        if ch == "," and depth == 0:
+            parts.append(cur)
+            cur = ""
+        else:
+            cur += ch
+    if cur.strip():
+        parts.append(cur)
+    return parts
+
+
+def parse_signature(code):
+    m = re.search(r"class\s+(\w+)\s*\{", code)
+    if not m:
+        raise Unsupported("no `class` found in solution.cpp")
+    cls = m.group(1)
+    cm = re.search(r"(?s)class\s+%s\s*\{(.*?)\}" % re.escape(cls), code)
+    body = cm.group(1)
+    pub = body.find("public:")
+    if pub == -1:
+        raise Unsupported("no `public:` found in the class")
+    body = body[pub + len("public:"):]
+
+    i = body.find("(")
+    if i == -1:
+        raise Unsupported("no method found in the class")
+    depth, j = 0, -1
+    for k in range(i, len(body)):
+        if body[k] == "(":
+            depth += 1
+        elif body[k] == ")":
+            depth -= 1
+            if depth == 0:
+                j = k
+                break
+    if j == -1:
+        raise Unsupported("unbalanced parentheses in the class")
+
+    params_text = body[i + 1:j]
+    pre = body[:i]
+    mn = re.search(r"(\w+)\s*$", pre)
+    if not mn:
+        raise Unsupported("cannot determine the method name")
+    name = mn.group(1)
+    ret = re.sub(r"^\s*(public|private|protected)\s*:\s*", "", pre[:mn.start()]).strip()
+
+    params = []
+    for p in split_top(params_text):
+        p = p.strip()
+        p = re.sub(r"^const\s+", "", p).strip()
+        pn = re.search(r"(\w+)\s*$", p)
+        pname = pn.group(1) if pn else ""
+        ptype = p[:pn.start()].strip() if pn else p
+        ptype = re.sub(r"[&*]+$", "", ptype).strip()
+        params.append((ptype, pname))
+    return cls, name, ret, params
+
+
+def norm(t):
+    return t.replace(" ", "")
+
+
+SCALAR_MAP = {
+    "int": "int", "long": "int", "longlong": "int", "short": "int",
+    "unsignedint": "int", "size_t": "int",
+    "float": "double", "double": "double", "longdouble": "double",
+    "bool": "bool", "char": "char",
+    "string": "string", "std::string": "string",
+}
+
+
+def cpp_of(t):
+    t = norm(t)
+    if t == "void":
+        return "void"
+    if t in SCALAR_MAP:
+        return SCALAR_MAP[t]
+    if t.startswith("vector<"):
+        inner = t[len("vector<"):-1]
+        if inner.startswith("vector<"):
+            return "vector<vector<%s>>" % cpp_of(inner[len("vector<"):-1])
+        return "vector<%s>" % cpp_of(inner)
+    raise Unsupported("unsupported type: %s" % t)
+
+
+def kind_of(t):
+    t = norm(t)
+    if t == "void":
+        return "void"
+    if t in SCALAR_MAP:
+        return "scalar"
+    if t.startswith("vector<"):
+        inner = t[len("vector<"):-1]
+        if inner.startswith("vector<"):
+            return "matrix"
+        return "vector"
+    raise Unsupported("unsupported type: %s" % t)
+
+
+def elem_of(t):
+    """Element type of a vector<T> / vector<vector<T>> (None for scalars)."""
+    t = norm(t)
+    if t.startswith("vector<"):
+        inner = t[len("vector<"):-1]
+        if inner.startswith("vector<"):
+            return "vector<%s>" % cpp_of(inner[len("vector<"):-1])
+        return cpp_of(inner)
+    return None
+
+
+def base_elem_of(t):
+    """Innermost element type of a vector<...<T>...>."""
+    t = norm(t)
+    while t.startswith("vector<"):
+        t = t[len("vector<"):-1]
+    return cpp_of(t)
+
+
+# --------------------------------------------------------------------------
+# Input analysis
+# --------------------------------------------------------------------------
+
+def detect_token(tok):
+    if re.fullmatch(r"-?\d+", tok):
+        return "int"
+    if re.fullmatch(r"-?\d*\.\d+([eE][+-]?\d+)?", tok):
+        return "float"
+    if re.fullmatch(r"-?\d+(\.\d+)?[eE][+-]?\d+", tok):
+        return "float"
+    if len(tok) == 1:
+        return "char"
+    return "string"
+
+
+def read_input_lines(problem_dir):
+    ins = sorted(glob.glob(os.path.join(problem_dir, "tests", "*.in")))
+    if not ins:
+        raise Unsupported("no tests/*.in files found")
+    with open(ins[0]) as f:
+        return f.read().splitlines()
+
+
+# --------------------------------------------------------------------------
+# Code generation
+# --------------------------------------------------------------------------
+
+def build_solve(cls, method, ret, params, lines):
+    tokens = []
+    for line in lines:
+        tokens.extend(line.split())
+    if not tokens:
+        raise Unsupported("the .in file is empty")
+
+    kinds = [kind_of(t) for t, _ in params]
+    cpps = [cpp_of(t) for t, _ in params]
+    elems = [elem_of(t) for t, _ in params]
+    names = [n or ("arg%d" % i) for i, (_, n) in enumerate(params)]
+    C = kinds.count("vector")
+    M = kinds.count("matrix")
+    S = kinds.count("scalar")
+
+    parse = []
+
+    if M:
+        if C > 0 or S > 0 or M > 1:
+            raise Unsupported(
+                "matrix params combined with other params are not supported yet")
+        if len(tokens) < 2:
+            raise Unsupported("matrix input needs at least `m n`")
+        m, n = int(tokens[0]), int(tokens[1])
+        if m * n != len(tokens) - 2:
+            raise Unsupported(
+                "matrix layout mismatch: m*n=%d but %d value(s) follow"
+                % (m * n, len(tokens) - 2))
+        nm = names[0]
+        parse.append("    int rows, cols;")
+        parse.append("    cin >> rows >> cols;")
+        parse.append("    vector<vector<%s>> %s(rows, vector<%s>(cols));"
+                     % (base_elem_of(params[0][0]), nm, base_elem_of(params[0][0])))
+        parse.append("    for (int i = 0; i < rows; ++i)")
+        parse.append("        for (int j = 0; j < cols; ++j) cin >> %s[i][j];" % nm)
+    else:
+        if len(tokens) < C + S:
+            raise Unsupported(
+                "layout mismatch: need %d count(s) + %d scalar(s) but only %d "
+                "token(s) present" % (C, S, len(tokens)))
+        counts = tokens[:C]
+        scalars = tokens[C:C + S]
+        data = tokens[C + S:]
+        try:
+            total = sum(int(c) for c in counts)
+        except ValueError:
+            raise Unsupported("counts must be integers: %s" % counts)
+        if total > len(data):
+            raise Unsupported(
+                "layout mismatch: counts sum to %d but only %d data token(s) "
+                "follow" % (total, len(data)))
+
+        # read counts first, then scalars (matches the file order)
+        for i in range(C):
+            parse.append("    int n_%d;" % i)
+            parse.append("    cin >> n_%d;" % i)
+        sidx = 0
+        for i, k in enumerate(kinds):
+            if k == "scalar":
+                parse.append("    %s %s;" % (cpps[i], names[i]))
+                parse.append("    cin >> %s;" % names[i])
+                sidx += 1
+        # then the array data, in param order
+        vidx = 0
+        for i, k in enumerate(kinds):
+            if k == "vector":
+                cnt = "n_%d" % vidx
+                vidx += 1
+                parse.append("    vector<%s> %s(%s);" % (elems[i], names[i], cnt))
+                parse.append("    for (int i = 0; i < %s; ++i) cin >> %s[i];"
+                             % (cnt, names[i]))
+
+    args = ", ".join(names)
+    rk = kind_of(ret)
+    ret_norm = norm(ret)
+    if rk == "void":
+        call = ["    Solution sol;", "    sol.%s(%s);" % (method, args)]
+        print_lines = []
+    else:
+        call = ["    Solution sol;",
+                "    %s ans = sol.%s(%s);" % (cpp_of(ret), method, args)]
+        if ret_norm == "bool":
+            print_lines = ["    cout << (ans ? \"true\" : \"false\") << '\\n';"]
+        elif rk == "vector":
+            print_lines = [
+                "    for (size_t i = 0; i < ans.size(); ++i) {",
+                "        if (i) cout << ' ';",
+                "        cout << ans[i];",
+                "    }",
+                "    cout << '\\n';",
+            ]
+        elif rk == "matrix":
+            print_lines = [
+                "    bool first = true;",
+                "    for (const auto& row : ans)",
+                "        for (const auto& v : row) {",
+                "            if (!first) cout << ' ';",
+                "            first = false;",
+                "            cout << v;",
+                "        }",
+                "    cout << '\\n';",
+            ]
+        else:
+            print_lines = ["    cout << ans << '\\n';"]
+
+    solve = ["void solve() {"] + parse + call + print_lines + ["}"]
+    return "\n".join(solve)
+
+
+def generate_main(solve_code):
+    with open(HARNESS) as f:
+        tmpl = f.read()
+    return tmpl.replace("int main() {", solve_code + "\n\nint main() {", 1)
+
+
+# --------------------------------------------------------------------------
+# Main
+# --------------------------------------------------------------------------
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("problem_dir")
+    ap.add_argument("-o", "--exe", required=True)
+    args = ap.parse_args()
+
+    problem_dir = os.path.abspath(args.problem_dir)
+    sol_path = os.path.join(problem_dir, "solution.cpp")
+    if not os.path.exists(sol_path):
+        print("error: %s not found" % sol_path, file=sys.stderr)
+        return 2
+
+    with open(sol_path) as f:
+        code = f.read()
+
+    try:
+        cls, method, ret, params = parse_signature(code)
+        lines = read_input_lines(problem_dir)
+        solve_code = build_solve(cls, method, ret, params, lines)
+    except Unsupported as e:
+        print("error: %s" % e, file=sys.stderr)
+        return 2
+
+    # summary of what was inferred
+    sig = "%s %s::%s(%s)" % (
+        cpp_of(ret), cls, method,
+        ", ".join("%s %s" % (cpp_of(t), n or "?") for t, n in params))
+    print("[runner] signature : %s" % sig)
+    print("[runner] input     : %s" % " ".join(
+        "%s(%s)" % (t, detect_token(t)) for t in lines[0].split()[:8]))
+
+    build_dir = os.path.join(ROOT, "build")
+    os.makedirs(build_dir, exist_ok=True)
+    main_path = os.path.join(build_dir, "auto_main.cpp")
+    with open(main_path, "w") as f:
+        f.write(generate_main(solve_code))
+    print("[runner] generated : %s" % main_path)
+
+    exe_dir = os.path.dirname(os.path.abspath(args.exe))
+    os.makedirs(exe_dir, exist_ok=True)
+    cmd = ["g++", "-std=c++17", "-O2", "-I", problem_dir,
+           main_path, "-o", os.path.abspath(args.exe)]
+    return subprocess.run(cmd).returncode
+
+
+if __name__ == "__main__":
+    sys.exit(main())
