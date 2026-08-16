@@ -26,6 +26,10 @@ cses/
       2.out
 ```
 
+The `tests/` folders are gitignored — they are generated locally (e.g. by the
+scaffolder agent in `.opencode/agent/draft-tests.md`, which works for any
+platform) and are not committed.
+
 ## Running tests
 
 With a problem's solution file open in VS Code, run the **Run Tests** task via
