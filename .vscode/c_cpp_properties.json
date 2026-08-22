@@ -10,9 +10,9 @@
                 "UNICODE",
                 "_UNICODE"
             ],
-            "cStandard": "c17",
+            "cStandard": "c11",
             "cppStandard": "c++17",
-            "intelliSenseMode": "windows-gcc-x64",
+            "intelliSenseMode": "windows-gcc-x86",
             "compilerPath": "C:\\MinGW\\bin\\g++.exe",
             "forcedInclude": [
                 "${workspaceFolder}/.vscode/leetcode_harness.h"

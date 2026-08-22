@@ -1,0 +1,20 @@
+# clang-format configuration for this repo.
+# Style: Google base, adjusted to 4-space indent to match existing code.
+BasedOnStyle: Google
+IndentWidth: 4
+ContinuationIndentWidth: 4
+AccessModifierOffset: -4
+ColumnLimit: 80
+AllowShortFunctionsOnASingleLine: Empty
+AllowShortIfStatementsOnASingleLine: false
+SortIncludes: false
+# Blank-line management: collapse runs of empty lines to one, drop leading
+# blank lines inside blocks. (clang-format preserves existing single blank
+# lines, e.g. the one you add between declarations and a loop.)
+MaxEmptyLinesToKeep: 1
+KeepEmptyLinesAtTheStartOfBlocks: false
+# One element per line for braced init lists (e.g. unordered_map = {...})
+BinPackArguments: false
+BinPackParameters: false
+AllowAllArgumentsOnNextLine: false
+AlignAfterOpenBracket: BlockIndent
