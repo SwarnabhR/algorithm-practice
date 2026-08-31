@@ -5,5 +5,12 @@
         "editor.formatOnSave": true
     },
     "C_Cpp.clang_format_path": "${env:USERPROFILE}\\.vscode\\extensions\\ms-vscode.cpptools-1.33.8-win32-x64\\LLVM\\bin\\clang-format.exe",
-    "C_Cpp.clang_format_style": "file"
+    "C_Cpp.clang_format_style": "file",
+    // The cpptools run/debug play button ignores tasks.json and compiles to
+    // <fileDirname>\<basename>.exe, littering problem folders. Everything here
+    // builds to build\main.exe via tasks.json, so hide the shortcut.
+    "C_Cpp.debugShortcut": false,
+    "files.exclude": {
+        "**/*.exe": true
+    }
 }
