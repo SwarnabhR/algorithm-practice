@@ -34,7 +34,18 @@ foreach ($inFile in $inputFiles) {
         continue
     }
 
-    $actual = cmd /c "`"$ExePath`" < `"$($inFile.FullName)`"" | Out-String
+    $outputFile = Join-Path ([System.IO.Path]::GetTempPath()) "test_output_$([System.Guid]::NewGuid()).txt"
+    $env:OUTPUT_PATH = $outputFile
+
+    cmd /c "`"$ExePath`" < `"$($inFile.FullName)`"" | Out-Null
+
+    if (Test-Path $outputFile) {
+        $actual = Get-Content $outputFile -Raw
+        Remove-Item $outputFile -Force
+    } else {
+        $actual = ""
+    }
+
     $expected = Get-Content $expectedFile -Raw
 
     if ($actual.Trim() -eq $expected.Trim()) {
