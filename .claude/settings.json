@@ -1,7 +1,10 @@
 {
   "permissions": {
     "allow": [
-      "Read(//c/Users/finst/.claude/projects/c--Users-finst-Projects-algorithm-practice/memory/**)"
+      "Read(//c/Users/finst/.claude/projects/c--Users-finst-Projects-algorithm-practice/memory/**)",
+      "Bash(echo \"exit=$?\")",
+      "Read(//c/Program Files/LLVM/bin/**)",
+      "Read(//c/Users/finst/.vscode/extensions/**)"
     ]
   }
 }

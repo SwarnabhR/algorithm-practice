@@ -13,8 +13,14 @@ vector<string> split(const string &);
  * The function accepts LONG_INTEGER_ARRAY ar as parameter.
  */
 
-long aVeryBigSum(vector<long> ar) {
-
+long long aVeryBigSum(vector<long> ar) {
+    long long x = 0;
+    long long size = ar.size();
+    while(size > 0){
+        x += ar[size - 1];
+        size--;
+    }
+    return x;
 }
 
 int main()
@@ -39,7 +45,7 @@ int main()
         ar[i] = ar_item;
     }
 
-    long result = aVeryBigSum(ar);
+    long long result = aVeryBigSum(ar);
 
     fout << result << "\n";
 

@@ -4,7 +4,7 @@
         "editor.defaultFormatter": "ms-vscode.cpptools",
         "editor.formatOnSave": true
     },
-    "C_Cpp.clang_format_path": "${env:USERPROFILE}\\.vscode\\extensions\\ms-vscode.cpptools-1.33.8-win32-x64\\LLVM\\bin\\clang-format.exe",
+    "C_Cpp.clang_format_path": "${env:USERPROFILE}\\.vscode\\extensions\\ms-vscode.cpptools-1.34.2-win32-x64\\LLVM\\bin\\clang-format.exe",
     "C_Cpp.clang_format_style": "file",
     // The cpptools run/debug play button ignores tasks.json and compiles to
     // <fileDirname>\<basename>.exe, littering problem folders. Everything here
