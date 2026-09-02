@@ -48,7 +48,10 @@ foreach ($inFile in $inputFiles) {
 
     $expected = Get-Content $expectedFile -Raw
 
-    if ($actual.Trim() -eq $expected.Trim()) {
+    $actualNormalized = $actual.Replace("`r`n", "`n").Trim()
+    $expectedNormalized = $expected.Replace("`r`n", "`n").Trim()
+
+    if ($actualNormalized -eq $expectedNormalized) {
         Write-Host "[$($inFile.BaseName)] PASS" -ForegroundColor Green
     } else {
         $allPassed = $false
