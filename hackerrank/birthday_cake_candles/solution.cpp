@@ -14,7 +14,19 @@ vector<string> split(const string&);
  */
 
 int birthdayCakeCandles(vector<int> candles) {
-
+    int largest = 0;
+    int count = 0;
+    for (int i = 0; i < candles.size(); i++) {
+        if (candles[i] > largest) {
+            largest = candles[i];
+        }
+    }
+    for (int i = 0; i < candles.size(); i++) {
+        if (largest == candles[i]) {
+            count++;
+        }
+    }
+    return count;
 }
 
 int main() {
