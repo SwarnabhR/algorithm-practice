@@ -4,7 +4,9 @@
       "Read(//c/Users/finst/.claude/projects/c--Users-finst-Projects-algorithm-practice/memory/**)",
       "Bash(echo \"exit=$?\")",
       "Read(//c/Program Files/LLVM/bin/**)",
-      "Read(//c/Users/finst/.vscode/extensions/**)"
+      "Read(//c/Users/finst/.vscode/extensions/**)",
+      "Bash(find /c/MinGW -iname \"stdc++.h\" 2>&1)",
+      "Read(//c/MinGW/**)"
     ]
   }
 }
