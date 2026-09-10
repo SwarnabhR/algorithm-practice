@@ -13,7 +13,24 @@ vector<string> split(const string&);
  * The function accepts INTEGER_ARRAY scores as parameter.
  */
 
-vector<int> breakingRecords(vector<int> scores) {}
+vector<int> breakingRecords(vector<int> scores) {
+    int lowest = scores[0];
+    int highest = scores[0];
+    int count_min = 0;
+    int count_max = 0;
+
+    for (int x : scores) {
+        if (x > highest) {
+            highest = x;
+            count_max++;
+        } else if (x < lowest) {
+            lowest = x;
+            count_min++;
+        }
+    }
+
+    return {count_max, count_min};
+}
 
 int main() {
     ofstream fout(getenv("OUTPUT_PATH"));
