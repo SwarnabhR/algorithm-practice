@@ -13,7 +13,7 @@
             "cStandard": "c11",
             "cppStandard": "c++17",
             "intelliSenseMode": "windows-gcc-x86",
-            "compilerPath": "C:\\MinGW\\bin\\g++.exe",
+            "compilerPath": "C:\\Users\\finst\\AppData\\Local\\Microsoft\\WinGet\\Packages\\BrechtSanders.WinLibs.POSIX.UCRT_Microsoft.Winget.Source_8wekyb3d8bbwe\\mingw64\\bin\\g++.exe",
             "forcedInclude": [
                 "${workspaceFolder}/.vscode/leetcode_harness.h"
             ]

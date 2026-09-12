@@ -2,9 +2,9 @@
 
 using namespace std;
 
-string ltrim(const string &);
-string rtrim(const string &);
-vector<string> split(const string &);
+string ltrim(const string&);
+string rtrim(const string&);
+vector<string> split(const string&);
 
 /*
  * Complete the 'migratoryBirds' function below.
@@ -14,11 +14,23 @@ vector<string> split(const string &);
  */
 
 int migratoryBirds(vector<int> arr) {
+    map<int, int> count;
+    for (int num : arr) {
+        count[num]++;
+    }
 
+    int bestType = -1, bestCount = -1;
+    for (const auto& entry : count) {
+        if (entry.second > bestCount) {
+            bestCount = entry.second;
+            bestType = entry.first;
+        }
+    }
+
+    return bestType;
 }
 
-int main()
-{
+int main() {
     ofstream fout(getenv("OUTPUT_PATH"));
 
     string arr_count_temp;
@@ -48,7 +60,7 @@ int main()
     return 0;
 }
 
-string ltrim(const string &str) {
+string ltrim(const string& str) {
     string s(str);
 
     s.erase(
@@ -59,7 +71,7 @@ string ltrim(const string &str) {
     return s;
 }
 
-string rtrim(const string &str) {
+string rtrim(const string& str) {
     string s(str);
 
     s.erase(
@@ -70,7 +82,7 @@ string rtrim(const string &str) {
     return s;
 }
 
-vector<string> split(const string &str) {
+vector<string> split(const string& str) {
     vector<string> tokens;
 
     string::size_type start = 0;
