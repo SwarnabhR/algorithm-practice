@@ -29,7 +29,8 @@ if ($isLeetCode) {
     # Single-file platforms (Codeforces, AtCoder, CSES, ...): the open file
     # is self-contained (includes main()).
     Write-Host "Building: $SourceFile" -ForegroundColor DarkGray
-    & g++ -std=c++17 -O2 $SourceFile -o $ExePath
+    $gxx = "C:\Users\finst\AppData\Local\Microsoft\WinGet\Packages\BrechtSanders.WinLibs.POSIX.UCRT_Microsoft.Winget.Source_8wekyb3d8bbwe\mingw64\bin\g++.exe"
+    & $gxx -std=c++17 -O2 $SourceFile -o $ExePath
 }
 
 exit $LASTEXITCODE
